@@ -1,6 +1,7 @@
 import time
 from datetime import timedelta
 
+import time_machine
 from django.core.exceptions import ValidationError
 from django.test import TransactionTestCase
 from django.utils import timezone
@@ -137,3 +138,45 @@ class TestPeriodicFutureTasks(PopulatePeriodicTaskCommandMixin, TransactionTestC
         p_task.max_number_of_executions = 42
         p_task.end_time = timezone.now()
         self.assertRaises(ValidationError, p_task.save)
+
+
+class TestSkipPeriodicFutureTasks(TransactionTestCase):
+    """Test class for IntegrityError handling without background command threading"""
+
+    @time_machine.travel("2025-01-01 12:00:00+0000", tick=False)
+    def test_populate_skips_duplicate_task_id_integrity_error(self):
+        # Create periodic task that will generate tasks
+        PeriodicFutureTask.objects.create(
+            periodic_task_id="Fetch Data",
+            type=settings.FUTURE_TASK_TYPE_ONE,
+            cron_string="0 * * * *",
+            last_task_creation=timezone.now() - timedelta(hours=2),
+        )
+
+        # Create conflicting task that will cause IntegrityError
+        conflicting_task_id = "Fetch Data (2025-01-01 12:00:00+0000)"
+        FutureTask.objects.create(
+            task_id=conflicting_task_id,
+            eta=timezone.now(),
+            type=settings.FUTURE_TASK_TYPE_ONE,
+        )
+
+        initial_task_count = FutureTask.objects.count()
+
+        # Run populate command and verify IntegrityError handling
+        from django_future_tasks.management.commands.populate_periodic_future_tasks import (
+            Command,
+        )
+
+        command = Command()
+        command.tick = 1
+
+        with self.assertLogs(
+            "populate_periodic_future_tasks",
+            level="WARNING",
+        ) as log_capture:
+            command.handle_tick()
+
+        # Verify warning was logged and task count unchanged
+        self.assertIn("Skipping duplicate task", log_capture.records[0].getMessage())
+        self.assertEqual(FutureTask.objects.count(), initial_task_count)

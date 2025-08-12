@@ -5,6 +5,7 @@ import time
 from croniter import croniter_range
 from django import db
 from django.core.management.base import BaseCommand
+from django.db import IntegrityError
 from django.utils import timezone
 
 from django_future_tasks.models import FutureTask, PeriodicFutureTask
@@ -62,15 +63,21 @@ class Command(BaseCommand):
 
                 dt_format = "%Y-%m-%d %H:%M:%S%z"
                 task_id = f"{p_task.periodic_task_id} ({dt.strftime(dt_format)})"
-                FutureTask.objects.create(
-                    task_id=task_id,
-                    eta=dt,
-                    data=p_task.data,
-                    type=p_task.type,
-                    status=FutureTask.FUTURE_TASK_STATUS_OPEN,
-                    periodic_parent_task_id=p_task.pk,
-                )
-                logger.info(f"FutureTask {task_id} created")
+                try:
+                    FutureTask.objects.create(
+                        task_id=task_id,
+                        eta=dt,
+                        data=p_task.data,
+                        type=p_task.type,
+                        status=FutureTask.FUTURE_TASK_STATUS_OPEN,
+                        periodic_parent_task_id=p_task.pk,
+                    )
+                    logger.info(f"FutureTask {task_id} created")
+                except IntegrityError as exc:
+                    logger.warning(
+                        f"Database constraint violation creating FutureTask {task_id}: {exc}. Skipping duplicate task.",
+                    )
+                    continue
 
             p_task.last_task_creation = now
             p_task.save()
