@@ -1,3 +1,4 @@
+import logging
 from threading import Thread
 
 from django.core.management import call_command
@@ -9,6 +10,8 @@ from django_future_tasks.management.commands.populate_periodic_future_tasks impo
 from django_future_tasks.management.commands.process_future_tasks import (
     Command as ProcessTasksCommand,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class TestThread(Thread):
@@ -23,7 +26,7 @@ class ProcessTasksCommandMixin:
         assert not hasattr(cls, "command_instance") or cls.command_instance is None, (
             "process_future_tasks has already been started"
         )
-        print("Starting process_future_tasks...")
+        logger.info("Starting process_future_tasks...")
 
         cls.command_instance = ProcessTasksCommand()
         cls.thread = TestThread(target=call_command, args=(cls.command_instance,))
@@ -35,7 +38,7 @@ class ProcessTasksCommandMixin:
         assert cls.command_instance is not None, (
             "process_future_tasks has not been started and can therefore not be stopped"
         )
-        print("Stopping process_future_tasks...")
+        logger.info("Stopping process_future_tasks...")
 
         super().tearDownClass()
         cls.command_instance._handle_termination()
@@ -48,7 +51,7 @@ class PopulatePeriodicTaskCommandMixin:
         assert not hasattr(cls, "command_instance") or cls.command_instance is None, (
             "populate_periodic_future_tasks has already been started"
         )
-        print("Starting populate_periodic_future_tasks...")
+        logger.info("Starting populate_periodic_future_tasks...")
 
         cls.command_instance = PopulatePeriodicTasksCommand()
         cls.thread = TestThread(target=call_command, args=(cls.command_instance,))
@@ -60,7 +63,7 @@ class PopulatePeriodicTaskCommandMixin:
         assert cls.command_instance is not None, (
             "populate_periodic_future_tasks has not been started and can therefore not be stopped"
         )
-        print("Stopping populate_periodic_future_tasks...")
+        logger.info("Stopping populate_periodic_future_tasks...")
 
         super().tearDownClass()
         cls.command_instance._handle_termination()
