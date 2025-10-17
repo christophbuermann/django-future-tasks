@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use `timezone.now()` instead of `datetime.now()` in `PeriodicFutureTask.save()`.
 - Use `condition` instead of `check` attribute in `CheckConstraint` with `django>=5.1`.
 
+### Changed
+
+- Improve `process_future_tasks` command.
+  - Terminate after processing the current task instead of the current task batch if SIGINT/SIGTERM is received.
+  - Remove unnecessary waiting for new tasks when there are already tasks that can be processed.
+  - Configurable waiting duration for new tasks.
+
 ### Added
 
 - Support for Python 3.14.

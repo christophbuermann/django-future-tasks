@@ -25,7 +25,7 @@ def my_task_function_error(sender, instance, **kwargs):
 
 @receiver(future_task_signal, sender=intern(settings.FUTURE_TASK_TYPE_INTERRUPTION))
 def my_task_function_interruption(sender, instance, **kwargs):
-    time.sleep(10)
+    time.sleep(2)
 
 
 @receiver(future_task_signal, sender=intern(settings.FUTURE_TASK_TYPE_ETA_ORDERING))
